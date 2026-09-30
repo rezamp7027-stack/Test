@@ -110,7 +110,7 @@ async function restSelect(table,query){
   return r.json();
 }
 async function loadSupabaseData(){
-  if(!supabase){
+  const read=async()=>{
     const [s,c,p]=await Promise.all([
       restSelect("menu_settings","select=*&id=eq.1&limit=1"),
       restSelect("menu_categories","select=*&order=sort_order.asc,id.asc"),
@@ -119,39 +119,22 @@ async function loadSupabaseData(){
     if(s[0])data.settings={cafeName:s[0].cafe_name||"NOIR Café",menuTitle:s[0].menu_title||"منوی کافه",menuSubtitle:s[0].menu_subtitle||"",phone:s[0].phone||"",address:s[0].address||"",instagram:s[0].instagram||"",openingHours:s[0].opening_hours||"",currency:s[0].currency||"تومان"};
     if(c?.length)data.categories=c.map(mapDbCategory);
     if(p)data.products=p.map(mapDbProduct);
-    return;
-  }
+  };
+  if(!supabase){await read();return}
   try{
     const [s,c,p]=await Promise.all([
       supabase.from("menu_settings").select("*").eq("id",1).maybeSingle(),
       supabase.from("menu_categories").select("*").order("sort_order",{ascending:true}).order("id",{ascending:true}),
       supabase.from("products").select("*").eq("active",true).order("sort_order",{ascending:true}).order("id",{ascending:true})
     ]);
-    if(s.error||c.error||p.error) throw s.error||c.error||p.error;
+    if(s.error||c.error||p.error)throw s.error||c.error||p.error;
     if(s.data)data.settings={cafeName:s.data.cafe_name||"NOIR Café",menuTitle:s.data.menu_title||"منوی کافه",menuSubtitle:s.data.menu_subtitle||"",phone:s.data.phone||"",address:s.data.address||"",instagram:s.data.instagram||"",openingHours:s.data.opening_hours||"",currency:s.data.currency||"تومان"};
     if(c.data?.length)data.categories=c.data.map(mapDbCategory);
     if(p.data)data.products=p.data.map(mapDbProduct);
-  }catch(sdkError){
-    console.warn("Supabase SDK failed; using REST fallback",sdkError);
-    const [s,c,p]=await Promise.all([
-      restSelect("menu_settings","select=*&id=eq.1&limit=1"),
-      restSelect("menu_categories","select=*&order=sort_order.asc,id.asc"),
-      restSelect("products","select=*&active=eq.true&order=sort_order.asc,id.asc")
-    ]);
-    if(s[0])data.settings={cafeName:s[0].cafe_name||"NOIR Café",menuTitle:s[0].menu_title||"منوی کافه",menuSubtitle:s[0].menu_subtitle||"",phone:s[0].phone||"",address:s[0].address||"",instagram:s[0].instagram||"",openingHours:s[0].opening_hours||"",currency:s[0].currency||"تومان"};
-    if(c?.length)data.categories=c.map(mapDbCategory);
-    if(p)data.products=p.map(mapDbProduct);
+  }catch(error){
+    console.warn("Supabase SDK read failed; using REST fallback",error);
+    await read();
   }
-}
-  const [s,c,p]=await Promise.all([
-    supabase.from("menu_settings").select("*").eq("id",1).maybeSingle(),
-    supabase.from("menu_categories").select("*").order("sort_order",{ascending:true}),
-    supabase.from("products").select("*").eq("active",true).order("sort_order",{ascending:true}).order("id",{ascending:true})
-  ]);
-  if(s.error||c.error||p.error) throw s.error||c.error||p.error;
-  if(s.data)data.settings={cafeName:s.data.cafe_name||"Testt Café",menuTitle:s.data.menu_title||"منوی کافه",menuSubtitle:s.data.menu_subtitle||"",phone:s.data.phone||"",address:s.data.address||"",instagram:s.data.instagram||"",openingHours:s.data.opening_hours||"",currency:s.data.currency||"تومان"};
-  if(c.data?.length)data.categories=c.data.map(mapDbCategory);
-  if(p.data)data.products=p.data.map(mapDbProduct);
 }
 async function adminSession(){if(!supabase)return false;const {data:{session}}=await supabase.auth.getSession();return !!(session&&await isDbAdmin())}
 async function isDbAdmin(){if(!supabase)return false;const {data:{user}}=await supabase.auth.getUser();if(!user?.email)return false;const {data,error}=await supabase.from("admins").select("email").eq("email",user.email).maybeSingle();return !error&&!!data}

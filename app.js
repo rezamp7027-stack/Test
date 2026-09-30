@@ -1,7 +1,7 @@
 const STORE="noir-cafe-menu-v1", CART="noir-cafe-cart-v1", AUTH="noir-cafe-admin-auth";
 const SUPABASE_URL="https://nphenccoyaqkmusaknxp.supabase.co";
 const SUPABASE_KEY="sb_publishable_mrfc6H6GVYdmQgZ2IC5uww_XgSCw_8c";
-const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const supabase=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY)||null;
 const ADMIN_EMAIL="admin@testt.local";
 const FALLBACK={
 hot:"https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=75",
@@ -103,7 +103,46 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){["searchOverlay","p
 
 function mapDbCategory(c){return{id:String(c.slug),dbId:c.id,name:c.name,description:c.description||"",icon:c.icon||"◇",visible:c.active!==false,sortOrder:Number(c.sort_order)||0,slug:c.slug}}
 function mapDbProduct(p){return{id:String(p.id),dbId:p.id,name:p.name,categoryId:String(p.category),description:p.description||"",ingredients:Array.isArray(p.ingredients)?p.ingredients:String(p.ingredients||"").split(",").map(x=>x.trim()).filter(Boolean),price:Number(p.price)||0,discountPrice:p.discount_price==null?null:Number(p.discount_price),image:p.image_url||"",available:p.available!==false&&p.active!==false,popular:p.popular===true,signature:p.signature===true,badge:p.badge||"",sizes:Array.isArray(p.sizes)?p.sizes:[],addons:Array.isArray(p.addons)?p.addons:[],sortOrder:Number(p.sort_order)||0,slug:p.slug}}
+async function restSelect(table,query){
+  const url=SUPABASE_URL+"/rest/v1/"+table+(query?"?"+query:"?select=*");
+  const r=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,Accept:"application/json"}});
+  if(!r.ok) throw new Error("Supabase REST "+table+" "+r.status);
+  return r.json();
+}
 async function loadSupabaseData(){
+  if(!supabase){
+    const [s,c,p]=await Promise.all([
+      restSelect("menu_settings","select=*&id=eq.1&limit=1"),
+      restSelect("menu_categories","select=*&order=sort_order.asc,id.asc"),
+      restSelect("products","select=*&active=eq.true&order=sort_order.asc,id.asc")
+    ]);
+    if(s[0])data.settings={cafeName:s[0].cafe_name||"NOIR Café",menuTitle:s[0].menu_title||"منوی کافه",menuSubtitle:s[0].menu_subtitle||"",phone:s[0].phone||"",address:s[0].address||"",instagram:s[0].instagram||"",openingHours:s[0].opening_hours||"",currency:s[0].currency||"تومان"};
+    if(c?.length)data.categories=c.map(mapDbCategory);
+    if(p)data.products=p.map(mapDbProduct);
+    return;
+  }
+  try{
+    const [s,c,p]=await Promise.all([
+      supabase.from("menu_settings").select("*").eq("id",1).maybeSingle(),
+      supabase.from("menu_categories").select("*").order("sort_order",{ascending:true}).order("id",{ascending:true}),
+      supabase.from("products").select("*").eq("active",true).order("sort_order",{ascending:true}).order("id",{ascending:true})
+    ]);
+    if(s.error||c.error||p.error) throw s.error||c.error||p.error;
+    if(s.data)data.settings={cafeName:s.data.cafe_name||"NOIR Café",menuTitle:s.data.menu_title||"منوی کافه",menuSubtitle:s.data.menu_subtitle||"",phone:s.data.phone||"",address:s.data.address||"",instagram:s.data.instagram||"",openingHours:s.data.opening_hours||"",currency:s.data.currency||"تومان"};
+    if(c.data?.length)data.categories=c.data.map(mapDbCategory);
+    if(p.data)data.products=p.data.map(mapDbProduct);
+  }catch(sdkError){
+    console.warn("Supabase SDK failed; using REST fallback",sdkError);
+    const [s,c,p]=await Promise.all([
+      restSelect("menu_settings","select=*&id=eq.1&limit=1"),
+      restSelect("menu_categories","select=*&order=sort_order.asc,id.asc"),
+      restSelect("products","select=*&active=eq.true&order=sort_order.asc,id.asc")
+    ]);
+    if(s[0])data.settings={cafeName:s[0].cafe_name||"NOIR Café",menuTitle:s[0].menu_title||"منوی کافه",menuSubtitle:s[0].menu_subtitle||"",phone:s[0].phone||"",address:s[0].address||"",instagram:s[0].instagram||"",openingHours:s[0].opening_hours||"",currency:s[0].currency||"تومان"};
+    if(c?.length)data.categories=c.map(mapDbCategory);
+    if(p)data.products=p.map(mapDbProduct);
+  }
+}
   const [s,c,p]=await Promise.all([
     supabase.from("menu_settings").select("*").eq("id",1).maybeSingle(),
     supabase.from("menu_categories").select("*").order("sort_order",{ascending:true}),
@@ -114,11 +153,11 @@ async function loadSupabaseData(){
   if(c.data?.length)data.categories=c.data.map(mapDbCategory);
   if(p.data)data.products=p.data.map(mapDbProduct);
 }
-async function adminSession(){const {data:{session}}=await supabase.auth.getSession();return session&&await isDbAdmin()}
-async function isDbAdmin(){const {data:{user}}=await supabase.auth.getUser();if(!user?.email)return false;const {data,error}=await supabase.from("admins").select("email").eq("email",user.email).maybeSingle();return !error&&!!data}
+async function adminSession(){if(!supabase)return false;const {data:{session}}=await supabase.auth.getSession();return !!(session&&await isDbAdmin())}
+async function isDbAdmin(){if(!supabase)return false;const {data:{user}}=await supabase.auth.getUser();if(!user?.email)return false;const {data,error}=await supabase.from("admins").select("email").eq("email",user.email).maybeSingle();return !error&&!!data}
 async function openAdmin(){ $("#adminApp").hidden=false;document.body.classList.add("no-scroll");$("#loginError").textContent="";if(await adminSession())dashboard();else{$("#adminLogin").hidden=false;$("#adminDashboard").hidden=true}}
-async function logout(){await supabase.auth.signOut();sessionStorage.removeItem(AUTH);closeAdmin()}
-function settings(){const s=data.settings;return'<div class="admin-toolbar"><h2>تنظیمات کافه</h2><button class="small-btn gold" id="saveSettings">ذخیره</button></div><form class="admin-form" id="settingsForm"><div class="form-two"><label>نام کافه<input name="cafeName" value="'+esc(s.cafeName)+'"></label><label>عنوان منو<input name="menuTitle" value="'+esc(s.menuTitle)+'"></label></div><label>زیرعنوان<textarea name="menuSubtitle">'+esc(s.menuSubtitle)+'</textarea></label><div class="form-two"><label>شماره تماس<input name="phone" value="'+esc(s.phone)+'"></label><label>اینستاگرام<input name="instagram" value="'+esc(s.instagram)+'"></label></div><div class="form-two"><label>ساعت کاری<input name="openingHours" value="'+esc(s.openingHours)+'"></label><label>واحد قیمت<input name="currency" value="'+esc(s.currency)+'</label></div><label>آدرس<input name="address" value="'+esc(s.address)+'"></label><p style="color:#666;font-size:10px">اطلاعات این بخش مستقیماً در Supabase ذخیره می‌شود.</p></form>'}
+async function logout(){if(supabase)await supabase.auth.signOut();sessionStorage.removeItem(AUTH);closeAdmin()}
+function settings(){const s=data.settings;return'<div class="admin-toolbar"><h2>تنظیمات کافه</h2><button class="small-btn gold" id="saveSettings">ذخیره</button></div><form class="admin-form" id="settingsForm"><div class="form-two"><label>نام کافه<input name="cafeName" value="'+esc(s.cafeName)+'"></label><label>عنوان منو<input name="menuTitle" value="'+esc(s.menuTitle)+'"></label></div><label>زیرعنوان<textarea name="menuSubtitle">'+esc(s.menuSubtitle)+'</textarea></label><div class="form-two"><label>شماره تماس<input name="phone" value="'+esc(s.phone)+'"></label><label>اینستاگرام<input name="instagram" value="'+esc(s.instagram)+'"></label></div><div class="form-two"><label>ساعت کاری<input name="openingHours" value="'+esc(s.openingHours)+'"></label><label>واحد قیمت<input name="currency" value="'+esc(s.currency)+'"></label></div><label>آدرس<input name="address" value="'+esc(s.address)+'"></label><p style="color:#666;font-size:10px">اطلاعات این بخش مستقیماً در Supabase ذخیره می‌شود.</p></form>'}
 function formProduct(id){
   const old=id?data.products.find(p=>p.id===id):null,p=old||{name:"",categoryId:data.categories[0]?.id||"",description:"",price:0,discountPrice:"",image:"",ingredients:[],badge:"",sizes:[],addons:[],available:true,popular:false,signature:false,sortOrder:data.products.length+1,slug:""};
   $("#adminView").innerHTML='<div class="admin-toolbar"><h2>'+(id?"ویرایش محصول":"محصول جدید")+'</h2><button class="small-btn" id="cancel">بازگشت</button></div><form class="admin-form" id="productForm"><div class="form-two"><label>نام *<input name="name" required value="'+esc(p.name)+'"></label><label>دسته<select name="categoryId">'+data.categories.map(c=>'<option value="'+esc(c.id)+'" '+(c.id===p.categoryId?"selected":"")+'>'+esc(c.name)+"</option>").join("")+'</select></label></div><label>توضیحات<textarea name="description">'+esc(p.description)+'</textarea></label><div class="form-two"><label>قیمت<input name="price" type="number" min="0" value="'+p.price+'" required></label><label>قیمت تخفیف<input name="discountPrice" type="number" min="0" value="'+(p.discountPrice??"")+'"></label></div><label>URL تصویر<input name="image" value="'+esc(p.image||"")+'"></label><div class="form-two"><label>مواد اولیه<input name="ingredients" value="'+esc((p.ingredients||[]).join(", "))+'"></label><label>برچسب<input name="badge" value="'+esc(p.badge||"")+'"></label></div><div class="form-two"><label>سایزها<input name="sizes" value="'+esc((p.sizes||[]).join(", "))+'"></label><label>افزودنی‌ها<input name="addons" value="'+esc((p.addons||[]).join(", "))+'"></label></div><label>ترتیب<input name="sortOrder" type="number" value="'+(p.sortOrder||1)+'"></label><div class="check-row"><label><input name="available" type="checkbox" '+(p.available?"checked":"")+'> موجود</label><label><input name="popular" type="checkbox" '+(p.popular?"checked":"")+'> محبوب</label><label><input name="signature" type="checkbox" '+(p.signature?"checked":"")+'> Signature</label></div><div class="admin-form-actions"><button class="primary-btn" type="submit">ذخیره</button></div></form>';
@@ -140,11 +179,11 @@ function bindAdmin(){
   $("[data-delete]").forEach(b=>b.onclick=async()=>{if(!confirm("این محصول حذف شود؟"))return;const p=data.products.find(x=>x.id===b.dataset.delete);if(!p)return;const r=await supabase.from("products").delete().eq("id",p.dbId);if(r.error)return toast("حذف ناموفق بود: "+r.error.message);await loadSupabaseData();render();drawAdmin()});
   $("#saveSettings")?.addEventListener("click",async()=>{const f=new FormData($("#settingsForm")),payload={cafe_name:String(f.get("cafeName")||"").trim(),menu_title:String(f.get("menuTitle")||"").trim(),menu_subtitle:String(f.get("menuSubtitle")||"").trim(),phone:String(f.get("phone")||"").trim(),instagram:String(f.get("instagram")||"").trim(),opening_hours:String(f.get("openingHours")||"").trim(),currency:String(f.get("currency")||"تومان").trim(),address:String(f.get("address")||"").trim()},r=await supabase.from("menu_settings").update(payload).eq("id",1);if(r.error)return toast("ذخیره تنظیمات ناموفق بود: "+r.error.message);await loadSupabaseData();render();toast("تنظیمات ذخیره شد")});
 }
-async function submitOrderToSupabase(f){
+async function submitOrderToSupabase(f){if(!supabase)throw new Error("اتصال امن سفارش در دسترس نیست");
   const items=cart.map(i=>({i,p:data.products.find(x=>x.id===i.productId)})).filter(x=>x.p);
   const {data:orderId,error}=await supabase.rpc("place_order",{p_customer_name:String(f.get("name")||"").trim(),p_customer_email:"",p_items:items.map(x=>({id:Number(x.p.dbId||x.p.id),qty:x.i.qty})),p_customer_phone:String(f.get("phone")||"").trim(),p_table_number:String(f.get("table")||"").trim(),p_note:String(f.get("note")||"").trim()});
   if(error)throw error;return orderId;
 }
-$("#loginForm").onsubmit=async e=>{e.preventDefault();$("#loginError").textContent="در حال ورود...";const f=new FormData(e.target),username=String(f.get("username")||"").trim(),password=String(f.get("password")||""),email=username.includes("@")?username:ADMIN_EMAIL,{error}=await supabase.auth.signInWithPassword({email,password});if(error){$("#loginError").textContent="ورود ناموفق: نام کاربری یا رمز عبور صحیح نیست.";return}if(!await isDbAdmin()){await supabase.auth.signOut();$("#loginError").textContent="این حساب دسترسی مدیریت ندارد.";return}sessionStorage.setItem(AUTH,"1");dashboard()};
+$("#loginForm").onsubmit=async e=>{e.preventDefault();if(!supabase){$("#loginError").textContent="سرویس مدیریت در دسترس نیست.";return}$("#loginError").textContent="در حال ورود...";const f=new FormData(e.target),username=String(f.get("username")||"").trim(),password=String(f.get("password")||""),email=username.includes("@")?username:ADMIN_EMAIL,{error}=await supabase.auth.signInWithPassword({email,password});if(error){$("#loginError").textContent="ورود ناموفق: نام کاربری یا رمز عبور صحیح نیست.";return}if(!await isDbAdmin()){await supabase.auth.signOut();$("#loginError").textContent="این حساب دسترسی مدیریت ندارد.";return}sessionStorage.setItem(AUTH,"1");dashboard()};
 $("#checkoutForm").onsubmit=async e=>{e.preventDefault();const btn=e.submitter;btn.disabled=true;btn.textContent="در حال ثبت سفارش...";try{const f=new FormData(e.target),orderId=await submitOrderToSupabase(f),items=cart.map(i=>({i,p:data.products.find(x=>x.id===i.productId)})).filter(x=>x.p),total=items.reduce((a,x)=>a+(x.p.discountPrice??x.p.price)*x.i.qty,0);$("#orderSummary").hidden=false;$("#orderSummary").innerHTML="<h4>سفارش ثبت شد</h4><p>کد سفارش: <strong>"+esc(orderId)+"</strong></p><p>مشتری: "+esc(f.get("name"))+" · تماس: "+esc(f.get("phone"))+" · میز: "+esc(f.get("table")||"—")+"</p>"+items.map(x=>'<div class="summary-row"><span>'+esc(x.p.name)+" × "+num(x.i.qty)+'</span><b>'+money((x.p.discountPrice??x.p.price)*x.i.qty)+"</b></div>").join("")+'<div class="summary-row"><strong>جمع کل</strong><strong>'+money(total)+"</strong></div>"+(f.get("note")?'<p class="order-note">یادداشت: '+esc(f.get("note"))+"</p>":"")+'<div class="notice">سفارش در سرور ثبت شد.</div>';cart=[];saveCart();renderCart()}catch(err){toast("ثبت سفارش ناموفق بود: "+(err?.message||"خطای نامشخص"))}finally{btn.disabled=false;btn.textContent="ثبت سفارش"}};
 (async function initSupabase(){try{await loadSupabaseData();render();renderCart();toast("منو از Supabase بارگذاری شد")}catch(err){console.error(err);render();renderCart();toast("اتصال به Supabase برقرار نشد")}})();

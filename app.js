@@ -3,7 +3,6 @@ const SUPABASE_URL="https://nphenccoyaqkmusaknxp.supabase.co";
 const SUPABASE_KEY="sb_publishable_mrfc6H6GVYdmQgZ2IC5uww_XgSCw_8c";
 const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const ADMIN_EMAIL="admin@testt.local";
-const ADMIN={username:"admin",password:"753248619"};
 const FALLBACK={
 hot:"https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=75",
 cold:"https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=75",

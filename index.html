@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b0a">
+  <meta name="description" content="منوی دیجیتال پریمیوم کافه؛ نوشیدنی گرم و سرد، فست‌فود، قلیان، دسر و آیتم‌های ویژه.">
+  <meta property="og:title" content="NOIR Café — منوی دیجیتال">
+  <meta property="og:description" content="منوی دیجیتال پریمیوم کافه">
+  <meta property="og:type" content="website">
+  <title>NOIR Café — منوی دیجیتال</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="site-header">
+      <div class="header-inner container">
+        <button class="icon-btn mobile-only" id="openAdmin" aria-label="پنل مدیریت" title="پنل مدیریت">⚙</button>
+        <a class="brand" href="#top" aria-label="NOIR Café">
+          <span class="brand-mark">N</span>
+          <span>
+            <strong data-setting="cafeName">NOIR Café</strong>
+            <small>COFFEE · LOUNGE · KITCHEN</small>
+          </span>
+        </a>
+        <div class="header-actions">
+          <button class="icon-btn" id="openSearch" aria-label="جستجو" title="جستجو">⌕</button>
+          <button class="cart-pill" id="openCart" aria-label="سبد سفارش">
+            <span>سبد</span>
+            <b id="cartCount">۰</b>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-glow"></div>
+        <div class="container hero-content">
+          <p class="eyebrow">DIGITAL MENU · EST. 2026</p>
+          <h1 data-setting="menuTitle">یک شب خوب،<br><em>با انتخاب درست.</em></h1>
+          <p class="hero-copy" data-setting="menuSubtitle">قهوه‌ی دقیق، طعم‌های جسور و فضای آرام؛ منوی خود را انتخاب کنید.</p>
+          <div class="hero-meta">
+            <span><i></i> امروز آماده‌ی سرو هستیم</span>
+            <span data-setting="openingHours">هر روز ۱۰:۰۰ تا ۲۳:۳۰</span>
+          </div>
+          <a class="hero-cta" href="#menu">مشاهده منو <span>↓</span></a>
+        </div>
+      </section>
+
+      <section class="category-bar-wrap" aria-label="دسته‌بندی منو">
+        <div class="container">
+          <div class="category-bar" id="categoryNav"></div>
+        </div>
+      </section>
+
+      <section class="menu-section container" id="menu">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">THE MENU</p>
+            <h2>انتخاب شما</h2>
+          </div>
+          <button class="text-btn" id="openSearch2">جستجو در منو <span>⌕</span></button>
+        </div>
+        <div id="menuSections"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <div class="footer-brand">NOIR Café</div>
+          <p>قهوه، آشپزخانه و شب‌های خوب.</p>
+        </div>
+        <div>
+          <span class="footer-label">تماس</span>
+          <a data-setting-link="phone" href="tel:+989000000000" data-setting="phone">۰۹۰۰ ۰۰۰ ۰۰۰۰</a>
+        </div>
+        <div>
+          <span class="footer-label">اینستاگرام</span>
+          <a data-setting-link="instagram" href="#" data-setting="instagram">@noircafe</a>
+        </div>
+        <div>
+          <span class="footer-label">آدرس</span>
+          <span data-setting="address">آدرس کافه را از پنل مدیریت وارد کنید</span>
+        </div>
+      </div>
+      <div class="container footer-bottom"><span>© 2026 NOIR Café</span><button class="footer-admin" id="openAdmin2">مدیریت</button></div>
+    </footer>
+  </div>
+
+  <div class="overlay" id="searchOverlay" hidden>
+    <div class="search-sheet">
+      <div class="sheet-head">
+        <h3>جستجو</h3>
+        <button class="close-btn" data-close="searchOverlay" aria-label="بستن">×</button>
+      </div>
+      <div class="search-box">
+        <span>⌕</span><input id="searchInput" type="search" placeholder="نام، مواد اولیه یا توضیحات..." autocomplete="off"><button id="clearSearch" aria-label="پاک کردن">×</button>
+      </div>
+      <div id="searchResults" class="search-results"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="productOverlay" hidden>
+    <div class="product-modal">
+      <button class="close-btn floating-close" data-close="productOverlay" aria-label="بستن">×</button>
+      <div class="product-modal-image"><img id="modalImage" alt=""></div>
+      <div class="product-modal-body">
+        <div class="modal-kicker" id="modalCategory"></div>
+        <h3 id="modalName"></h3>
+        <p id="modalDescription"></p>
+        <div class="ingredients" id="modalIngredients"></div>
+        <div class="modal-price" id="modalPrice"></div>
+        <div id="modalSizes" class="variant-group"></div>
+        <div id="modalAddons" class="variant-group"></div>
+        <div class="quantity-row">
+          <div class="qty"><button id="modalMinus">−</button><b id="modalQty">۱</b><button id="modalPlus">+</button></div>
+          <button class="primary-btn" id="modalAdd">افزودن به سبد</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cart-drawer" id="cartDrawer" aria-hidden="true">
+    <div class="drawer-backdrop" data-close-cart></div>
+    <aside class="drawer">
+      <div class="sheet-head">
+        <div><p class="eyebrow">YOUR ORDER</p><h3>سبد سفارش</h3></div>
+        <button class="close-btn" data-close-cart aria-label="بستن">×</button>
+      </div>
+      <div id="cartItems" class="cart-items"></div>
+      <div id="cartEmpty" class="empty-state"><span>◌</span><h4>سبد شما خالی است</h4><p>از منو یک انتخاب خوب شروع کنید.</p></div>
+      <div class="cart-footer" id="cartFooter">
+        <div class="total-line"><span>جمع کل</span><strong id="cartTotal">۰ تومان</strong></div>
+        <button class="primary-btn full" id="checkoutBtn">ادامه سفارش</button>
+        <button class="ghost-btn full" id="clearCart">خالی کردن سبد</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="overlay" id="checkoutOverlay" hidden>
+    <div class="checkout-modal">
+      <div class="sheet-head"><div><p class="eyebrow">ORDER DETAILS</p><h3>ثبت جزئیات</h3></div><button class="close-btn" data-close="checkoutOverlay">×</button></div>
+      <form id="checkoutForm" class="form-grid">
+        <label>نام<input name="name" required maxlength="60" placeholder="نام شما"></label>
+        <label>شماره تماس<input name="phone" required inputmode="tel" maxlength="20" placeholder="۰۹۱۲..."></label>
+        <label>شماره میز<input name="table" maxlength="10" placeholder="مثلاً ۱۲"></label>
+        <label>یادداشت<textarea name="note" maxlength="300" placeholder="در صورت نیاز..."></textarea></label>
+        <div class="notice">این نسخه بدون بک‌اند است؛ سفارش در سرور ارسال نمی‌شود و فقط خلاصه‌ی سفارش نمایش داده خواهد شد.</div>
+        <button class="primary-btn full" type="submit">نمایش خلاصه سفارش</button>
+      </form>
+      <div id="orderSummary" class="order-summary" hidden></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="admin-app" id="adminApp" hidden>
+    <div id="adminLogin" class="admin-login">
+      <div class="login-card">
+        <button class="close-btn" id="closeAdminLogin">×</button>
+        <div class="brand brand-center"><span class="brand-mark">N</span><span><strong>NOIR Admin</strong><small>PRIVATE DASHBOARD</small></span></div>
+        <p class="eyebrow">CONTROL CENTER</p>
+        <h2>ورود مدیریت</h2>
+        <p>برای مدیریت منو وارد شوید.</p>
+        <form id="loginForm">
+          <label>نام کاربری<input name="username" autocomplete="username" required></label>
+          <label>رمز عبور<input name="password" type="password" autocomplete="current-password" required></label>
+          <button class="primary-btn full" type="submit">ورود به پنل</button>
+          <div class="login-error" id="loginError"></div>
+        </form>
+      </div>
+    </div>
+    <div id="adminDashboard" hidden></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

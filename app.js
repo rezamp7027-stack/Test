@@ -39,7 +39,7 @@ const money=n=>num(n)+" "+(data.settings.currency||"تومان");
 const uid=p=>p+"_"+Date.now()+"_"+Math.random().toString(36).slice(2,7);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const fallback=c=>FALLBACK[c]||FALLBACK.hot;
-function loadData(){try{const x=JSON.parse(localStorage.getItem(STORE));if(x?.products)return x}catch(e){}return JSON.parse(JSON.stringify(defaults))}
+function loadData(){try{const x=JSON.parse(localStorage.getItem(STORE));if(Array.isArray(x?.products)&&x.products.length)return x}catch(e){}return JSON.parse(JSON.stringify(defaults))}
 function loadCart(){try{return JSON.parse(localStorage.getItem(CART))||[]}catch(e){return[]}}
 function save(){localStorage.setItem(STORE,JSON.stringify(data))}
 function saveCart(){localStorage.setItem(CART,JSON.stringify(cart))}
@@ -101,8 +101,8 @@ $$("[data-close]").forEach(b=>b.onclick=()=>closeOverlay(b.dataset.close));$$("[
 $("#checkoutForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),items=cart.map(i=>({i,p:data.products.find(x=>x.id===i.productId)})).filter(x=>x.p),total=items.reduce((a,x)=>a+(x.p.discountPrice??x.p.price)*x.i.qty,0);$("#orderSummary").hidden=false;$("#orderSummary").innerHTML="<h4>خلاصه سفارش</h4><p>مشتری: "+esc(f.get("name"))+" · تماس: "+esc(f.get("phone"))+" · میز: "+esc(f.get("table")||"—")+"</p>"+items.map(x=>'<div class="summary-row"><span>'+esc(x.p.name)+" × "+num(x.i.qty)+'</span><b>'+money((x.p.discountPrice??x.p.price)*x.i.qty)+"</b></div>").join("")+'<div class="summary-row"><strong>جمع کل</strong><strong>'+money(total)+'</strong></div>'+(f.get("note")?'<p class="order-note">یادداشت: '+esc(f.get("note"))+'</p>':"")+'<div class="notice">نسخه فعلی بدون بک‌اند است؛ سفارش به سرور ارسال نشده است.</div>'};
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){["searchOverlay","productOverlay","checkoutOverlay"].forEach(closeOverlay);toggleCart(false)}});
 
-function mapDbCategory(c){return{id:String(c.slug),dbId:c.id,name:c.name,description:c.description||"",icon:c.icon||"◇",visible:c.active!==false,sortOrder:Number(c.sort_order)||0,slug:c.slug}}
-function mapDbProduct(p){return{id:String(p.id),dbId:p.id,name:p.name,categoryId:String(p.category),description:p.description||"",ingredients:Array.isArray(p.ingredients)?p.ingredients:String(p.ingredients||"").split(",").map(x=>x.trim()).filter(Boolean),price:Number(p.price)||0,discountPrice:p.discount_price==null?null:Number(p.discount_price),image:p.image_url||"",available:p.available!==false&&p.active!==false,popular:p.popular===true,signature:p.signature===true,badge:p.badge||"",sizes:Array.isArray(p.sizes)?p.sizes:[],addons:Array.isArray(p.addons)?p.addons:[],sortOrder:Number(p.sort_order)||0,slug:p.slug}}
+function mapDbCategory(c){return{id:String(c.slug||c.id),dbId:c.id,name:c.name,description:c.description||"",icon:c.icon||"◇",visible:c.active!==false,sortOrder:Number(c.sort_order)||0,slug:c.slug||String(c.id)}}
+function mapDbProduct(p,categoryMap={}){const rawCategory=p.category??p.category_id??p.categoryId??"";const categoryId=categoryMap[String(rawCategory)]||String(rawCategory);return{id:String(p.id),dbId:p.id,name:p.name,categoryId,description:p.description||"",ingredients:Array.isArray(p.ingredients)?p.ingredients:String(p.ingredients||"").split(",").map(x=>x.trim()).filter(Boolean),price:Number(p.price)||0,discountPrice:p.discount_price==null?null:Number(p.discount_price),image:p.image_url||"",available:p.available!==false&&p.active!==false,popular:p.popular===true,signature:p.signature===true,badge:p.badge||"",sizes:Array.isArray(p.sizes)?p.sizes:[],addons:Array.isArray(p.addons)?p.addons:[],sortOrder:Number(p.sort_order)||0,slug:p.slug}}
 async function restSelect(table,query){
   const url=SUPABASE_URL+"/rest/v1/"+table+(query?"?"+query:"?select=*");
   const r=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,Accept:"application/json"}});
@@ -118,7 +118,7 @@ async function loadSupabaseData(){
     ]);
     if(s[0])data.settings={cafeName:s[0].cafe_name||"NOIR Café",menuTitle:s[0].menu_title||"منوی کافه",menuSubtitle:s[0].menu_subtitle||"",phone:s[0].phone||"",address:s[0].address||"",instagram:s[0].instagram||"",openingHours:s[0].opening_hours||"",currency:s[0].currency||"تومان"};
     if(c?.length)data.categories=c.map(mapDbCategory);
-    if(p)data.products=p.map(mapDbProduct);
+    if(p?.length){const categoryMap={};c.forEach(cat=>{categoryMap[String(cat.id)]=String(cat.slug||cat.id);categoryMap[String(cat.slug||"")]=String(cat.slug||cat.id)});data.products=p.map(x=>mapDbProduct(x,categoryMap));}
   };
   if(!supabase){await read();return}
   try{
@@ -130,7 +130,7 @@ async function loadSupabaseData(){
     if(s.error||c.error||p.error)throw s.error||c.error||p.error;
     if(s.data)data.settings={cafeName:s.data.cafe_name||"NOIR Café",menuTitle:s.data.menu_title||"منوی کافه",menuSubtitle:s.data.menu_subtitle||"",phone:s.data.phone||"",address:s.data.address||"",instagram:s.data.instagram||"",openingHours:s.data.opening_hours||"",currency:s.data.currency||"تومان"};
     if(c.data?.length)data.categories=c.data.map(mapDbCategory);
-    if(p.data)data.products=p.data.map(mapDbProduct);
+    if(p.data?.length){const categoryMap={};(c.data||[]).forEach(cat=>{categoryMap[String(cat.id)]=String(cat.slug||cat.id);categoryMap[String(cat.slug||"")]=String(cat.slug||cat.id)});data.products=p.data.map(x=>mapDbProduct(x,categoryMap));}
   }catch(error){
     console.warn("Supabase SDK read failed; using REST fallback",error);
     await read();
